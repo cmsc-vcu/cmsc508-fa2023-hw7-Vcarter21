@@ -1,7 +1,7 @@
 ---
 title: Homework 7 - Creating a resume database
-author: (your name goes here!)
-date: last-modified
+author: Valencia Carter
+date: 11-12-2023
 format:
     html:
         theme: cosmo
@@ -9,12 +9,9 @@ format:
         embed-resources: true
         code-copy: true
 ---
+This document includes python code and schema that I've created that connects to a DDL document to build a database that will represent a company-wide resume capturing the collective skills and certifications of all the people in my company. 
 
-(include a brief description of what is in this document)
-
-(Please clean up any comments that I included.  This is a scaffold document.)
-
-GITHUB URL:  <your URL goes here!>
+GITHUB URL:  <https://github.com/cmsc-vcu/cmsc508-fa2023-hw7-Vcarter21>
 
 ```{python}
 #| eval: true
@@ -25,7 +22,7 @@ import pandas as pd
 from tabulate import tabulate
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
-from sqlalchemy.exc import OperationalError, ProgrammingError
+from sqlalchemy.exc import OperationalError, ProgrammingError, ArgumentError, NoSuchModuleError
 from IPython.display import display, Markdown
 ```
 ```{python}
@@ -92,17 +89,17 @@ except Exception as e:
 
 ## Overview and description
 
-(briefly describe the project and the database)
+In this document python code, schema and diagrams are present to establish a connection with a DDL document. The purpose of this connection is to construct a database that serves as a comprehensive repository for capturing the diverse skills and certifications held by individuals across the entire company. The database aims to consolidate and represent a collective overview of the expertise and qualifications within the organization, providing a centralized resource for managing and accessing company-wide resume information. 
 
 ## Crows-foot diagram
 
-(add a description of the diagram and what the reader is seeing.)
+The Crows foot diagram below shows an ER diagram with two entities "customer" and "delivery-address" which illustrates their relationships and attributes. This ER diagram visually represents the connections and data elements involved in the relationships between customers, orders, and delivery addresses.
 
 ```{mermaid}
 %%| echo: false
 erDiagram
     CUSTOMER ||--o{ ORDER : places
-    CUSTOMER }|..|{ DELIVERY-ADDRESS : uses
+    CUSTOMER }|..|{ DELIVERY_ADDRESS : uses
     CUSTOMER{
         int id
         string first_name
@@ -116,12 +113,16 @@ erDiagram
 ## Examples of data in the database
 
 For the people, skills, and roles tables, provide a description of each table and it's contents. Then provide a listing of the entire table.
+For the people table it represents the people who work at the company.
+For the skills table it represnts the skills people acquire.
+For the roles table it represents who does what. 
+skills( id,name, description, tag, url, time_commitment)
+people( id,first_name, last_name, email, linkedin_url, headshot_url, discord_handle, brief_bio, date_joined)
+roles( id, name, sort_priority)
 
 ### People table
 
-The *people* table contains elements that describe ... 
-
-Below is a list of data in the *people* table.
+The *people* table contains elements that describe and retrieve data from the "people" table in a database, handles potential errors, and displays the result.
 
 ```{python}
 #| echo: false
@@ -142,42 +143,67 @@ df
 
 ### Skills table
 
-The *skills* table contains elements that describe ... 
-
-Below is a list of data in the *skills* table.
+The *skills* table contains elements that describe and retrieve data from the "skills" table in a database, handles potential errors, and displays the result.
 
 ```{python}
 #| echo: false
 #| eval: true
-
+sql = f"""
+select * from skills;
+"""
 ## Add code to list roles table here
+try:
+    df = pd.read_sql(sql,cnx)
+    df
+except Exception as e:
+    message = str(e)
+    print(f"An error occurred:\n\n{message}\n\nIgnoring and moving on.")
+    df = pd.DataFrame()
+df
 ```
 
 ### Roles table
 
-The *roles* table contains elements that describe ... 
-
-Below is a list of data in the *roles* table.
+The *roles* table contains elements that describe and retrieve data from the "roles" table in a database, handles potential errors, and displays the result.
 
 ```{python}
 #| echo: false
 #| eval: true
-
+sql = f"""
+select * from roles;
+"""
 ## Add code to list roles table here
+try:
+    df = pd.read_sql(sql,cnx)
+    df
+except Exception as e:
+    message = str(e)
+    print(f"An error occurred:\n\n{message}\n\nIgnoring and moving on.")
+    df = pd.DataFrame()
+df
 ```
 
 
 ## Sample queries
 
-Let's explore the database!
+skills, people, roles, peopleskills, peopleroles
 
 # List skill names, tags, and descriptions ordered by name
 
-(here a sample query)
-
 ```{python}
 sql = f"""
-select * from people
+SELECT
+        c.name AS skill_name,
+        c.tag AS skill_tag,
+        c.description AS skill_description
+    FROM
+        peopleskills a
+        INNER JOIN people b ON (a.people_id = b.people_id)
+        INNER JOIN skills c ON (a.skills_id = c.id)
+    WHERE
+        b.people_last_name = 'Person 1'
+    ORDER BY
+        c.name;
 """
 ```
 
@@ -201,29 +227,269 @@ df
 
 ### List people names and email addresses ordered by last_name
 
+```{python}
+sql = f"""
+SELECT
+        people_last_name,
+        people_email
+    FROM
+        people
+    ORDER BY
+        people_last_name
+        ;
+"""
+```
+
+
+```{python}
+#| echo: false
+#| eval: true
+try:
+    df = pd.read_sql(sql,cnx)
+    df
+except Exception as e:
+    message = str(e)
+    print(f"An error occurred:\n\n{message}\n\nIgnoring and moving on.")
+    df = pd.DataFrame()
+df
+
+```
 
 ### List skill names of Person 1
 
+```{python}
+sql = f"""
+SELECT
+    people_last_name,
+    name,
+    tag
+from
+    peopleskills a
+    inner join people b on (a.people_id=b.people_id)
+    inner join skills c on (a.skills_id=c.id)
+WHERE
+    people_last_name='Person 1'
+order BY
+    name,
+    people_last_name
+;
+"""
+```
+
+```{python}
+#| echo: false
+#| eval: true
+try:
+    df = pd.read_sql(sql,cnx)
+    df
+except Exception as e:
+    message = str(e)
+    print(f"An error occurred:\n\n{message}\n\nIgnoring and moving on.")
+    df = pd.DataFrame()
+df
+
+```
 
 ### List people names with Skill 6
 
 
+```{python}
+sql = f"""
+SELECT
+        b.people_last_name,
+        b.people_first_name,
+        c.name AS skill_name
+    FROM
+        peopleskills a
+        INNER JOIN people b ON (a.people_id = b.people_id)
+        INNER JOIN skills c ON (a.skills_id = c.id)
+    WHERE
+        c.id = 6
+    ORDER BY
+        b.people_last_name,
+        b.people_first_name;
+"""
+```
+
+```{python}
+#| echo: false
+#| eval: true
+try:
+    df = pd.read_sql(sql,cnx)
+    df
+except Exception as e:
+    message = str(e)
+    print(f"An error occurred:\n\n{message}\n\nIgnoring and moving on.")
+    df = pd.DataFrame()
+df
+
+```
+
 ### List people with a DEVELOPER role
 
+```{python}
+sql = f"""
+SELECT
+        b.people_last_name,
+        b.people_first_name,
+        c.name AS skill_name
+    FROM
+        peopleskills a
+        INNER JOIN people b ON (a.people_id = b.people_id)
+        INNER JOIN skills c ON (a.skills_id = c.id)
+        INNER JOIN peopleroles pr ON (b.people_id = pr.people_id)
+        INNER JOIN roles r ON (pr.role_id = r.id)
+    WHERE
+        r.name = 'DEVELOPER'
+    ORDER BY
+        b.people_last_name,
+        b.people_first_name;
+"""
+```
+
+```{python}
+#| echo: false
+#| eval: true
+try:
+    df = pd.read_sql(sql,cnx)
+    df
+except Exception as e:
+    message = str(e)
+    print(f"An error occurred:\n\n{message}\n\nIgnoring and moving on.")
+    df = pd.DataFrame()
+df
+
+```
 
 ### List names and email addresses of people without skills
 
+```{python}
+sql = f"""
+SELECT
+    people_last_name,
+    people_first_name,
+    people_email
+FROM
+    people
+WHERE
+    people_id NOT IN (SELECT DISTINCT people_id FROM peopleskills)
+ORDER BY
+    people_last_name,
+    people_first_name;
+"""
+```
+
+```{python}
+#| echo: false
+#| eval: true
+try:
+    df = pd.read_sql(sql,cnx)
+    df
+except Exception as e:
+    message = str(e)
+    print(f"An error occurred:\n\n{message}\n\nIgnoring and moving on.")
+    df = pd.DataFrame()
+df
+
+```
 
 ### List names and tags of unused skills
 
+```{python}
+sql = f"""
+SELECT
+    c.name AS skill_name,
+    c.tag
+FROM
+    skills c
+WHERE
+    c.id NOT IN (SELECT DISTINCT skills_id FROM peopleskills)
+ORDER BY
+    c.name;
+"""
+```
+```{python}
+#| echo: false
+#| eval: true
+try:
+    df = pd.read_sql(sql,cnx)
+    df
+except Exception as e:
+    message = str(e)
+    print(f"An error occurred:\n\n{message}\n\nIgnoring and moving on.")
+    df = pd.DataFrame()
+df
+
+```
 
 ### List people names and skill names with the BOSS role
 
+```{python}
+sql = f"""
+SELECT
+    b.people_last_name,
+    b.people_first_name,
+    c.name AS skill_name
+FROM
+    peopleskills a
+    INNER JOIN people b ON (a.people_id = b.people_id)
+    INNER JOIN skills c ON (a.skills_id = c.id)
+    INNER JOIN peopleroles d ON (b.people_id = d.people_id)
+    INNER JOIN roles e ON (d.role_id = e.id)
+WHERE
+    e.name = 'Boss'
+ORDER BY
+    b.people_last_name,
+    b.people_first_name,
+    c.name;
+"""
+```
+
+```{python}
+#| echo: false
+#| eval: true
+try:
+    df = pd.read_sql(sql,cnx)
+    df
+except Exception as e:
+    message = str(e)
+    print(f"An error occurred:\n\n{message}\n\nIgnoring and moving on.")
+    df = pd.DataFrame()
+df
+
+```
 
 ### List ids and names of unused roles
 
+```{python}
+sql = f"""
+SELECT
+    id,
+    name
+FROM
+    roles
+WHERE
+    id NOT IN (SELECT DISTINCT role_id FROM peopleroles)
+ORDER BY
+    name;
+"""
+```
+
+```{python}
+#| echo: false
+#| eval: true
+try:
+    df = pd.read_sql(sql,cnx)
+    df
+except Exception as e:
+    message = str(e)
+    print(f"An error occurred:\n\n{message}\n\nIgnoring and moving on.")
+    df = pd.DataFrame()
+df
+
+```
 
 ## Reflection
 
-(Write a paragraph expressing your thoughts, feelings, and insights about your experience with this assignment.  Pause and breath before writing - I'm trying to encourage critical thinking and self-awareness while allowing you to explore the connections between theory and practice. And yes, delete this paragraph.)
+This assignment was tricky but worth it once I figured out all my issues. Like i stated in the homework 6 I found it difficult trying to figure out all the software I needed to download to make my code run without getting any errors but it worked out once I got everything set up and running properly. This particular assignment went more smoothly than the last and I found it to be actually enjoyable.
 
